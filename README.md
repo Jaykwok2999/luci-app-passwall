@@ -6,4 +6,4 @@
 
 ## 插件预览
 
-![插件预览][https://github.com/Jaykwok2999/luci-app-passwall/blob/main/flags/passwall.png]
+![插件预览](https://github.com/Jaykwok2999/luci-app-passwall/blob/main/flags/passwall.png)
