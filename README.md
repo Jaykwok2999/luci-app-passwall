@@ -3,3 +3,7 @@
 
 ### 另外：
 由于 Geoview v0.1.9 及之前版本在转换规则时的一些问题，**请务必将 Geoview 更新到 v0.1.10 版**。
+
+## 插件预览
+
+![插件预览](https://raw.githubusercontent.com/Jaykwok2999/luci-app-passwall/img/passwall.png)
