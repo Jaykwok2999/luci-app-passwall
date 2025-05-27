@@ -4,7 +4,7 @@
 ### 另外：
 由于 Geoview v0.1.9 及之前版本在转换规则时的一些问题，**请务必将 Geoview 更新到 v0.1.10 版**。
 
-##使用方法
+## 使用方法
 passwall的插件与依赖整合包
 
 使用方法：将整合包上传到openwrt设备的tmp目录，输入命令 opkg install *.ipk
