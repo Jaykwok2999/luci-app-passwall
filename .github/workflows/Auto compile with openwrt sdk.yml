@@ -120,7 +120,7 @@ jobs:
           cd sdk
 
           cat > feeds.conf.default << EOF
-          src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git;main
+          src-git passwall_packages https://github.com/Jaykwok2999/passwall-packages.git;main
           src-git passwall https://github.com/${{ env.passwall }}.git;${{ github.ref_name }}
           src-git base https://github.com/openwrt/openwrt.git;openwrt-${{ matrix.sdk_ver }}
           src-git packages https://github.com/openwrt/packages.git;openwrt-${{ matrix.sdk_ver }}
