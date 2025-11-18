@@ -14,7 +14,7 @@ on:
 env:
   TZ: Asia/Shanghai
   passwall: ${{ github.repository }}
-  packages: xiaorouji/openwrt-passwall-packages
+  packages: Jaykwok2999/passwall-packages
   package_names: "chinadns-ng dns2socks geoview hysteria ipt2socks microsocks naiveproxy tcping trojan-plus tuic-client shadowsocks-rust shadowsocksr-libev simple-obfs sing-box v2ray-geodata v2ray-plugin xray-core xray-plugin shadow-tls"
   package_release: "chinadns-ng dns2socks geoview hysteria ipt2socks microsocks naiveproxy tcping trojan-plus tuic-client shadowsocks-rust shadowsocksr-libev simple-obfs sing-box v2ray-geoip v2ray-plugin v2ray-geosite xray-core xray-plugin shadow-tls"
 
