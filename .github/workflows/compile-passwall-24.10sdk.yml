@@ -113,9 +113,10 @@ jobs:
           sudo -E apt-get -qq clean
 
       - name: Initialization environment
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
         run: |
-          wget ${{ matrix.url_sdk }}
-          file_name=$(echo ${{ matrix.url_sdk }} | awk -F/ '{print $NF}')
+          wget ${{ matrix.sdk_url }}
+          file_name=$(echo ${{ matrix.sdk_url }} | awk -F/ '{print $NF}')
           mkdir sdk
           if [[ $file_name == *.tar.xz ]]; then
             tar -xJf $file_name -C ./sdk --strip-components=1
