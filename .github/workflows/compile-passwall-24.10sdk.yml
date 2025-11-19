@@ -208,20 +208,6 @@ jobs:
             url_sdk: https://downloads.openwrt.org/releases/24.10.4/targets/ramips/rt288x/openwrt-sdk-24.10.4-ramips-rt288x_gcc-13.3.0_musl.Linux-x86_64.tar.zst
             ver: "ipk"
 
-
-
-          - platform: x86_64
-            url_sdk: https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-            ver: "apk"
-
-          - platform: aarch64_cortex-a53
-            url_sdk: https://downloads.openwrt.org/snapshots/targets/mvebu/cortexa53/openwrt-sdk-mvebu-cortexa53_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-            ver: "apk"
-
-          - platform: mipsel_24kc
-            url_sdk: https://downloads.openwrt.org/snapshots/targets/ramips/rt288x/openwrt-sdk-ramips-rt288x_gcc-14.2.0_musl.Linux-x86_64.tar.zst
-            ver: "apk"
-
     steps:
       - name: Initialization ${{ matrix.platform }} compile environment
         run: |
