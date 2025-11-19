@@ -94,6 +94,7 @@ jobs:
           - sdk_ver: "24.10"
             luci_ver: "24.10"
             sdk_url: https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-sdk-24.10.1-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+            ver: "ipk"
     steps:
       - name: Install packages
         run: |
