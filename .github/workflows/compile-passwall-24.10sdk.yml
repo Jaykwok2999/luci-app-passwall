@@ -91,10 +91,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - sdk_ver: "24.10"
-            luci_ver: "24.10"
-            sdk_url: https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-sdk-24.10.1-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+          - platform: x86_64
+            url_sdk: https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst
             ver: "ipk"
+
+          - platform: x86_64
+            url_sdk: https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+            ver: "apk"
     steps:
       - name: Install packages
         run: |
@@ -113,10 +116,9 @@ jobs:
           sudo -E apt-get -qq clean
 
       - name: Initialization environment
-        if: steps.cache-sdk.outputs.cache-hit != 'true'
         run: |
-          wget ${{ matrix.sdk_url }}
-          file_name=$(echo ${{ matrix.sdk_url }} | awk -F/ '{print $NF}')
+          wget ${{ matrix.url_sdk }}
+          file_name=$(echo ${{ matrix.url_sdk }} | awk -F/ '{print $NF}')
           mkdir sdk
           if [[ $file_name == *.tar.xz ]]; then
             tar -xJf $file_name -C ./sdk --strip-components=1
@@ -128,15 +130,19 @@ jobs:
           fi
           cd sdk
 
-          cat > feeds.conf.default << EOF
-          src-git passwall_packages https://github.com/Jaykwok2999/passwall-packages.git;main
+          # Update feeds to github source
+          sed -i \
+              -e 's|git\.openwrt\.org/feed|github.com/openwrt|g' \
+              -e 's|git\.openwrt\.org/project|github.com/openwrt|g' \
+              -e 's|git\.openwrt\.org/openwrt|github.com/openwrt|g' \
+              "feeds.conf.default"
+
+          cat > feeds.tmp <<'EOF'
+          src-git passwall_packages https://github.com/xiaorouji/openwrt-passwall-packages.git;main
           src-git passwall https://github.com/${{ env.passwall }}.git;${{ github.ref_name }}
-          src-git base https://github.com/openwrt/openwrt.git;openwrt-${{ matrix.sdk_ver }}
-          src-git packages https://github.com/openwrt/packages.git;openwrt-${{ matrix.sdk_ver }}
-          src-git luci https://github.com/openwrt/luci.git;openwrt-${{ matrix.luci_ver }}
-          src-git routing https://github.com/openwrt/routing.git;openwrt-${{ matrix.sdk_ver }}
-          src-git telephony https://github.com/openwrt/telephony.git;openwrt-${{ matrix.sdk_ver }}
           EOF
+          cat feeds.conf.default >> feeds.tmp
+          mv feeds.tmp feeds.conf.default
 
           ./scripts/feeds update -a
           ./scripts/feeds install -a
@@ -146,15 +152,17 @@ jobs:
 
           rm -rf temp_resp
           git clone -b master --single-branch https://github.com/openwrt/packages.git temp_resp
-          cd temp_resp
-          git checkout 2b99cd7d7637da0f152da378994f699aaf0dd44d
-          cd ..
           echo "update golang version"
           rm -rf feeds/packages/lang/golang
           cp -r temp_resp/lang/golang feeds/packages/lang
           echo "update rust version"
           rm -rf feeds/packages/lang/rust
           cp -r temp_resp/lang/rust feeds/packages/lang
+          rm -rf temp_resp
+          
+          echo "update patch-kernel.sh"
+          git clone -b main --single-branch https://github.com/openwrt/openwrt.git temp_resp
+          cp -f temp_resp/scripts/patch-kernel.sh scripts/
           rm -rf temp_resp
 
           echo "Patch application completed"
@@ -209,6 +217,20 @@ jobs:
           - platform: mipsel_24kc
             url_sdk: https://downloads.openwrt.org/releases/24.10.4/targets/ramips/rt288x/openwrt-sdk-24.10.4-ramips-rt288x_gcc-13.3.0_musl.Linux-x86_64.tar.zst
             ver: "ipk"
+
+
+
+          - platform: x86_64
+            url_sdk: https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+            ver: "apk"
+
+          - platform: aarch64_cortex-a53
+            url_sdk: https://downloads.openwrt.org/snapshots/targets/mvebu/cortexa53/openwrt-sdk-mvebu-cortexa53_gcc-14.3.0_musl.Linux-x86_64.tar.zst
+            ver: "apk"
+
+          - platform: mipsel_24kc
+            url_sdk: https://downloads.openwrt.org/snapshots/targets/ramips/rt288x/openwrt-sdk-ramips-rt288x_gcc-14.2.0_musl.Linux-x86_64.tar.zst
+            ver: "apk"
 
     steps:
       - name: Initialization ${{ matrix.platform }} compile environment
