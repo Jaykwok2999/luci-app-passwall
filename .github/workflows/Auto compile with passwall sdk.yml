@@ -2,7 +2,7 @@
 # Copyright (c) 2022-2025 SMALLPROGRAM <https://github.com/smallprogram>
 # Description: Auto compile
 #
-name: "Auto compile with openwrt sdk"
+name: "Auto compile with passwall sdk"
 on:
   repository_dispatch:
   workflow_dispatch:
