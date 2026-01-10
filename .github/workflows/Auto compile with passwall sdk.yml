@@ -150,15 +150,16 @@ jobs:
           echo "Start applying the patch"
 
           rm -rf temp_resp
+          git clone -b 26.x --single-branch https://github.com/sbwml/packages_lang_golang.git temp_resp
+          echo "update golang version"
+          rm -rf feeds/packages/lang/golang
+          cp -r temp_resp/lang/golang feeds/packages/lang
           git clone -b master --single-branch https://github.com/openwrt/packages.git temp_resp
           echo "update rust version"
           rm -rf feeds/packages/lang/rust
           cp -r temp_resp/lang/rust feeds/packages/lang
           rm -rf temp_resp
-
-          rm -rf feeds/packages/lang/golang
-          git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
-
+          
           echo "update patch-kernel.sh"
           git clone -b main --single-branch https://github.com/openwrt/openwrt.git temp_resp
           cp -f temp_resp/scripts/patch-kernel.sh scripts/
@@ -280,16 +281,17 @@ jobs:
 
 
           rm -rf temp_resp
+          git clone -b 26.x --single-branch https://github.com/sbwml/packages_lang_golang.git temp_resp
+          echo "update golang version"
+          rm -rf feeds/packages/lang/golang
+          cp -r temp_resp/lang/golang feeds/packages/lang
           git clone -b master --single-branch https://github.com/openwrt/packages.git temp_resp
           echo "update rust version"
           rm -rf feeds/packages/lang/rust
           cp -r temp_resp/lang/rust feeds/packages/lang
           rm -rf temp_resp
 
-          rm -rf feeds/packages/lang/golang
-          git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
-
-          egit clone -b main --single-branch https://github.com/openwrt/openwrt.git temp_resp
+          git clone -b main --single-branch https://github.com/openwrt/openwrt.git temp_resp
           cp -f temp_resp/scripts/patch-kernel.sh scripts/
           rm -rf temp_resp
 
