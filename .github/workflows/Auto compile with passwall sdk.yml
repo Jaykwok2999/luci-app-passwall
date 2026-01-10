@@ -97,10 +97,6 @@ jobs:
           - platform: x86_64
             url_sdk: https://downloads.openwrt.org/releases/24.10.4/targets/x86/64/openwrt-sdk-24.10.4-x86-64_gcc-13.3.0_musl.Linux-x86_64.tar.zst
             ver: "ipk"
-
-          - platform: x86_64
-            url_sdk: https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-            ver: "apk"
     steps:
       - name: Install packages
         run: |
@@ -155,14 +151,14 @@ jobs:
 
           rm -rf temp_resp
           git clone -b master --single-branch https://github.com/openwrt/packages.git temp_resp
-          echo "update golang version"
-          rm -rf feeds/packages/lang/golang
-          cp -r temp_resp/lang/golang feeds/packages/lang
           echo "update rust version"
           rm -rf feeds/packages/lang/rust
           cp -r temp_resp/lang/rust feeds/packages/lang
           rm -rf temp_resp
-          
+
+          rm -rf feeds/packages/lang/golang
+          git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+
           echo "update patch-kernel.sh"
           git clone -b main --single-branch https://github.com/openwrt/openwrt.git temp_resp
           cp -f temp_resp/scripts/patch-kernel.sh scripts/
@@ -220,20 +216,6 @@ jobs:
           - platform: mipsel_24kc
             url_sdk: https://downloads.openwrt.org/releases/24.10.4/targets/ramips/rt288x/openwrt-sdk-24.10.4-ramips-rt288x_gcc-13.3.0_musl.Linux-x86_64.tar.zst
             ver: "ipk"
-
-
-
-          - platform: x86_64
-            url_sdk: https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-sdk-x86-64_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-            ver: "apk"
-
-          - platform: aarch64_cortex-a53
-            url_sdk: https://downloads.openwrt.org/snapshots/targets/mvebu/cortexa53/openwrt-sdk-mvebu-cortexa53_gcc-14.3.0_musl.Linux-x86_64.tar.zst
-            ver: "apk"
-
-          - platform: mipsel_24kc
-            url_sdk: https://downloads.openwrt.org/snapshots/targets/ramips/rt288x/openwrt-sdk-ramips-rt288x_gcc-14.2.0_musl.Linux-x86_64.tar.zst
-            ver: "apk"
 
     steps:
       - name: Initialization ${{ matrix.platform }} compile environment
@@ -299,15 +281,15 @@ jobs:
 
           rm -rf temp_resp
           git clone -b master --single-branch https://github.com/openwrt/packages.git temp_resp
-          echo "update golang version"
-          rm -rf feeds/packages/lang/golang
-          cp -r temp_resp/lang/golang feeds/packages/lang
           echo "update rust version"
           rm -rf feeds/packages/lang/rust
           cp -r temp_resp/lang/rust feeds/packages/lang
           rm -rf temp_resp
 
-          git clone -b main --single-branch https://github.com/openwrt/openwrt.git temp_resp
+          rm -rf feeds/packages/lang/golang
+          git clone https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+
+          egit clone -b main --single-branch https://github.com/openwrt/openwrt.git temp_resp
           cp -f temp_resp/scripts/patch-kernel.sh scripts/
           rm -rf temp_resp
 
