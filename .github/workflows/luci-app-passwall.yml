@@ -39,8 +39,8 @@ jobs:
         
          
         git clone --depth=1 https://github.com/kiddin9/op-packages.git -b main
-        mv ./kwrt-packages/luci-app-passwall ./luci-app-passwall/
-        rm -rf ./kwrt-packages
+        mv ./op-packages/luci-app-passwall ./luci-app-passwall/
+        rm -rf ./op-packages
         cp -rf flags/un.svg luci-app-passwall/root/www/luci-static/passwall/flags/
         
         
