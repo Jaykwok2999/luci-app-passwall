@@ -367,14 +367,14 @@ local function non_file_check(file_path, header_content)
 end
 
 local function GeoToRule(rule_name, rule_type, out_path)
-	if not api.is_finded("geoview") then
-		log(rule_name .. "生成失败，缺少 geoview 组件。")
-		return false;
+	local bin = api.finded_com("geoview")
+	if not (bin and api.compare_versions(api.get_app_version("geoview"), ">=", "0.1.10")) then
+		log("[警告] Geoview 组件缺失或版本过低，规则生成流程已被跳过。")
+		return false
 	end
 	local geosite_path = asset_location .. "geosite.dat"
 	local geoip_path = asset_location .. "geoip.dat"
 	local file_path = (rule_type == "domain") and geosite_path or geoip_path
-	local bin = api.get_app_path("geoview")
 	local geo_arg
 	if rule_type == "domain" then
 		if rule_name == "gfwlist" then
@@ -389,7 +389,13 @@ local function GeoToRule(rule_name, rule_type, out_path)
 	end
 	local cmd = string.format(bin .. " -input '%s' %s -lowmem=true -output '%s'", file_path, geo_arg, out_path)
 	sys.exec(cmd)
-	return true;
+	local local_file_size = tonumber(fs.stat(out_path, "size") or 0)
+	if local_file_size == 0 then
+		os.remove(out_path)
+		log(rule_name .. " 生成失败，请确保 Geo 文件正确且包含目标规则。")
+		return false
+	end
+	return true
 end
 
 --fetch rule
@@ -407,10 +413,10 @@ local function fetch_rule(rule_name, rule_type, url, exclude_domain, max_retries
 	end
 
 	for k, v in ipairs(url) do
-        local current_file = "/tmp/" .. rule_name .. "_dl" .. k
-        local success = false
+		local current_file = "/tmp/" .. rule_name .. "_dl" .. k
+		local success = false
 
-        if v ~= "geo2rule" then
+		if v ~= "geo2rule" then
 			for i = 1, max_attempts do
 				local http_code, header = curl(v, current_file)
 				if http_code == 200 and not non_file_check(current_file, header) then
@@ -434,7 +440,7 @@ local function fetch_rule(rule_name, rule_type, url, exclude_domain, max_retries
 						line = line:gsub("full:", "")
 						if not (is_comment_line(line) or is_ipv4(line) or has_colon(line) or (exclude_domain and check_excluded_domain(line))) then
 							local match = extract_domain(line)
-							if match then
+							if match and not is_ipv4(match) then
 								rule_dataset[match] = true
 							end
 						end
@@ -445,7 +451,7 @@ local function fetch_rule(rule_name, rule_type, url, exclude_domain, max_retries
 							line = line:gsub("full:", "")
 							if not (is_comment_line(line) or is_ipv4(line) or has_colon(line) or (exclude_domain and check_excluded_domain(line))) then
 								local match = extract_domain(line)
-								if match then
+								if match and not is_ipv4(match) then
 									rule_dataset[match] = true
 								end
 							end
@@ -663,6 +669,34 @@ if geo2rule ~= "1" and gfwlist_update == "0" and chnroute_update == "0" and chnr
 	os.exit(0)
 end
 
+local function check_instance(action)
+	local rule_lock = "/var/lock/" .. name .. "_rule_update.lock"
+	local sub_lock = "/var/lock/" .. name .. "_subscribe.lock"
+
+	if action == "start" then
+		math.randomseed(os.time() + math.floor(os.clock() * 1000))
+		api.nixio.nanosleep(0, math.random(100, 1000) * 1000000)
+		if fs.access(rule_lock) then
+			log("有[规则更新]实例正在运行，请稍后再试...\n")
+			os.exit(0)
+		else
+			luci.sys.call("touch " .. rule_lock)
+		end
+	elseif action == "end" then
+		luci.sys.call("rm -f " .. rule_lock)
+		return
+	end
+
+	if fs.access(sub_lock) then
+		log("[订阅]实例正在运行，[规则更新]进入队列等待...\n")
+	end
+	while fs.access(sub_lock) do
+		api.nixio.nanosleep(2, 0)
+	end
+end
+
+check_instance("start")
+
 log("开始更新规则...")
 local function safe_call(func, err_msg)
 	xpcall(func, function(e)
@@ -763,3 +797,5 @@ if reboot == 1 then
 	api.uci_save(uci, name, true, true)
 end
 log("规则更新完毕...\n")
+
+check_instance("end")
