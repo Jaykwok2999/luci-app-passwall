@@ -32,10 +32,10 @@ if formvalue_proto then s.val["protocol"] = formvalue_proto end
 local arg_select_proto = luci.http.formvalue("select_proto") or ""
 
 local ss_method_list = {
-	"none", "plain", "aes-128-gcm", "aes-256-gcm", "chacha20-poly1305", "chacha20-ietf-poly1305", "xchacha20-poly1305", "xchacha20-ietf-poly1305", "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305"
+	"aes-128-gcm", "aes-256-gcm", "chacha20-poly1305", "chacha20-ietf-poly1305", "xchacha20-poly1305", "xchacha20-ietf-poly1305", "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm", "2022-blake3-chacha20-poly1305"
 }
 
-local security_list = { "none", "auto", "aes-128-gcm", "chacha20-poly1305", "zero" }
+local security_list = { "auto", "aes-128-gcm", "chacha20-poly1305" }
 
 local header_type_list = {
 	"none", "srtp", "utp", "wechat-video", "dtls", "wireguard", "dns"
@@ -105,7 +105,7 @@ if load_balancing_options then -- [[ Load balancing Start ]]
 	o = s:option(MultiValue, _n("balancing_node"), translate("Load balancing node list"), translate("Load balancing node list, <a target='_blank' href='https://xtls.github.io/config/routing.html#balancerobject'>document</a>"))
 	o:depends({ [_n("node_add_mode")] = "manual" })
 	o.widget = "checkbox"
-	o.template = appname .. "/cbi/nodes_multivalue"
+	o.template = m:template_path("/cbi/nodes_multivalue")
 	o.group = {}
 	for k1, v1 in pairs(node_list) do
 		if k1 == "socks_list" or k1 == "normal_list" then
@@ -116,12 +116,12 @@ if load_balancing_options then -- [[ Load balancing Start ]]
 		end
 	end
 	-- 读取旧 DynamicList
-	function o.cfgvalue(self, section)
-		return m.uci:get_list(appname, section, "balancing_node") or {}
+	function o.custom_cfgvalue(self, section)
+		return table.concat(m:get(section, "balancing_node") or {}, " ")
 	end
 	-- 写入保持 DynamicList
 	function o.custom_write(self, section, value)
-		local old = m.uci:get_list(appname, section, "balancing_node") or {}
+		local old = m:get(section, "balancing_node") or {}
 		local new, set = {}, {}
 		for v in value:gmatch("%S+") do
 			new[#new + 1] = v
@@ -129,13 +129,13 @@ if load_balancing_options then -- [[ Load balancing Start ]]
 		end
 		for _, v in ipairs(old) do
 			if not set[v] then
-				m.uci:set_list(appname, section, "balancing_node", new)
+				m:set(section, "balancing_node", new)
 				return
 			end
 			set[v] = nil
 		end
 		for _ in pairs(set) do
-			m.uci:set_list(appname, section, "balancing_node", new)
+			m:set(section, "balancing_node", new)
 			return
 		end
 	end
@@ -152,9 +152,10 @@ if load_balancing_options then -- [[ Load balancing Start ]]
 	o:depends({ [_n("node_add_mode")] = "batch" })
 	local descrStr = "Example: <code>^A && B && !C && D$</code><br>"
 	descrStr = descrStr .. "This means the node remark must start with A (^), include B, exclude C (!), and end with D ($).<br>"
-	descrStr = descrStr .. "Conditions are joined by <code>&&</code>, and their order does not affect the result."
-	o.description = translate(descrStr) .. string.format("<br><font color='red'>%s</font>",
-			translate("Keep the match scope small. Too many nodes can impact router performance."))
+	descrStr = descrStr .. "Conditions are joined by <code>&&</code> (AND), and their order does not affect the result.<br>"
+	descrStr = descrStr .. "Multiple groups can be separated by <code>||</code> (OR), matching succeeds if any group matches.<br>"
+	descrStr = descrStr .. "Example: <code>A && B || C && D</code> means (A AND B) OR (C AND D)."
+	o.description = translate(descrStr)
 
 	o = s:option(ListValue, _n("balancingStrategy"), translate("Balancing Strategy"))
 	o:depends({ [_n("protocol")] = "_balancing" })
@@ -170,7 +171,7 @@ if load_balancing_options then -- [[ Load balancing Start ]]
 	o:value("", translate("Close(Not use)"))
 	o:value("_direct", translate("Direct Connection"))
 	o:depends({ [_n("protocol")] = "_balancing" })
-	o.template = appname .. "/cbi/nodes_listvalue"
+	o.template = m:template_path("/cbi/nodes_listvalue")
 	-- 最大 fallback 套娃层数
 	local MAX_FALLBACK_DEPTH = 3
 	-- 检查是否会形成回环
@@ -394,10 +395,12 @@ o:depends({ [_n("protocol")] = "hysteria2" })
 o = s:option(Value, _n("hysteria2_down_mbps"), translate("Max download Mbps"))
 o:depends({ [_n("protocol")] = "hysteria2" })
 
-o = s:option(Value, _n("hysteria2_idle_timeout"), translate("Idle Timeout"), translate("Example:") .. "30s (4s~120s)")
+o = s:option(Value, _n("hysteria2_idle_timeout"), translate("Idle Timeout"), translate("Units:seconds") .. " (4~120)")
+o.datatype = "range(4,120)"
 o:depends({ [_n("protocol")] = "hysteria2"})
 
-o = s:option(Value, _n("hysteria2_keep_alive_period"), translate("QUIC KeepAlive interval"), translate("Example:") .. "10s (2s~60s)")
+o = s:option(Value, _n("hysteria2_keep_alive_period"), translate("QUIC KeepAlive interval"), translate("Units:seconds") .. " (2~60)")
+o.datatype = "range(2,60)"
 o:depends({ [_n("protocol")] = "hysteria2"})
 
 o = s:option(Flag, _n("hysteria2_disable_mtu_discovery"), translate("Disable MTU detection"))
@@ -440,24 +443,15 @@ o = s:option(Value, _n("tls_serverName"), "SNI " .. translate("Domain"))
 o:depends({ [_n("tls")] = true })
 o:depends({ [_n("protocol")] = "hysteria2" })
 
-if api.compare_versions(os.date("%Y.%m.%d"), "<", "3026.6.1") then
-	o = s:option(Flag, _n("tls_allowInsecure"), translate("allowInsecure"), translate("Whether unsafe connections are allowed. When checked, Certificate validation will be skipped."))
-	o.default = "0"
-	o:depends({ [_n("tls")] = true, [_n("reality")] = false })
-	o:depends({ [_n("protocol")] = "hysteria2" })
-end
+o = s:option(Value, _n("tls_pinSHA256"), translate("TLS Chain Fingerprint (SHA256)"))
+o:depends({ [_n("tls")] = true, [_n("reality")] = false })
+o:depends({ [_n("protocol")] = "hysteria2" })
+o.description = translate("Once set, connects only when the server’s chain fingerprint matches.") ..
+		string.format("<a href='javascript:void(0)' onclick='javascript:fetchCertSha256(this)'>%s</a>", "→ " .. translate("Fetch Manually"))
 
-if api.compare_versions(xray_version, ">=", "26.1.31") then
-	o = s:option(Value, _n("tls_pinSHA256"), translate("TLS Chain Fingerprint (SHA256)"))
-	o:depends({ [_n("tls")] = true, [_n("reality")] = false })
-	o:depends({ [_n("protocol")] = "hysteria2" })
-	o.description = translate("Once set, connects only when the server’s chain fingerprint matches.") ..
-			string.format("<a href='javascript:void(0)' onclick='javascript:fetchCertSha256(this)'>%s</a>", "→ " .. translate("Fetch Manually"))
-
-	o = s:option(Value, _n("tls_CertByName"), translate("TLS Certificate Name (CertName)"), translate("TLS is used to verify the leaf certificate name."))
-	o:depends({ [_n("tls")] = true, [_n("reality")] = false })
-	o:depends({ [_n("protocol")] = "hysteria2" })
-end
+o = s:option(Value, _n("tls_CertByName"), translate("TLS Certificate Name (CertName)"), translate("TLS is used to verify the leaf certificate name."))
+o:depends({ [_n("tls")] = true, [_n("reality")] = false })
+o:depends({ [_n("protocol")] = "hysteria2" })
 
 o = s:option(Flag, _n("tls_certificate"), translate("TLS Certificate (PEM)"))
 o.default = "0"
@@ -514,9 +508,13 @@ o:value("ios")
 o:value("android")
 o:value("random")
 o:value("randomized")
+o:value("unsafe")
 o.default = "chrome"
 o:depends({ [_n("tls")] = true, [_n("utls")] = true })
 o:depends({ [_n("tls")] = true, [_n("reality")] = true })
+
+o = s:option(Value, _n("cipherSuites"), translate("Cipher Suites"), '<a href="https://go.dev/src/crypto/tls/cipher_suites.go#L44" target="_blank">***</a>' .. " " .. translate("Configures the list of supported cipher suites, separated by :"))
+o:depends({ [_n("tls")] = true, [_n("reality")] = false })
 
 o = s:option(Flag, _n("use_mldsa65Verify"), translate("ML-DSA-65"))
 o.default = "0"
@@ -674,6 +672,14 @@ o = s:option(TextValue, _n("xhttp_extra"), "　", translate("An XHttpObject in J
 o:depends({ [_n("use_xhttp_extra")] = true })
 o.rows = 10
 o.wrap = "off"
+o.datatype = "json"
+local o_validate = o.validate
+o.validate = function(self, value)
+	value = api.trim(value):gsub("\r\n", "\n"):gsub("^[ \t]*\n", ""):gsub("\n[ \t]*$", ""):gsub("\n[ \t]*\n", "\n")
+	local v = o_validate(self, value)
+	if v then return v end
+	return nil, "XHTTP Extra " .. translate("Must be JSON text!")
+end
 o.custom_cfgvalue = function(self, section, value)
 	local raw = m:get(section, "xhttp_extra")
 	if raw then
@@ -694,14 +700,6 @@ o.custom_write = function(self, section, value)
 		end
 	else
 		m:del(section, "download_address")
-	end
-end
-o.validate = function(self, value)
-	value = api.trim(value):gsub("\r\n", "\n"):gsub("^[ \t]*\n", ""):gsub("\n[ \t]*$", ""):gsub("\n[ \t]*\n", "\n")
-	if api.jsonc.parse(value) then
-		return value
-	else
-		return nil, "XHTTP Extra " .. translate("Must be JSON text!")
 	end
 end
 o.custom_remove = function(self, section, value)
@@ -759,6 +757,14 @@ o.rows = 10
 o.wrap = "off"
 o.description = translate("An FinalMaskObject in JSON format, used for sharing.") .. "<br>" ..
 		translate("Custom finalmask overrides mkcp, hysteria2, fragment, noise, and related settings.")
+o.datatype = "json"
+local o_validate = o.validate
+o.validate = function(self, value)
+	value = api.trim(value):gsub("\r\n", "\n"):gsub("^[ \t]*\n", ""):gsub("\n[ \t]*$", ""):gsub("\n[ \t]*\n", "\n")
+	local v = o_validate(self, value)
+	if v then return v end
+	return nil, "FinalMask " .. translate("Must be JSON text!")
+end
 o.custom_cfgvalue = function(self, section, value)
 	local raw = m:get(section, "finalmask")
 	if raw then
@@ -767,14 +773,6 @@ o.custom_cfgvalue = function(self, section, value)
 end
 o.custom_write = function(self, section, value)
 	m:set(section, "finalmask", api.base64Encode(value) or "")
-end
-o.validate = function(self, value)
-	value = api.trim(value):gsub("\r\n", "\n"):gsub("^[ \t]*\n", ""):gsub("\n[ \t]*$", ""):gsub("\n[ \t]*\n", "\n")
-	if api.jsonc.parse(value) then
-		return value
-	else
-		return nil, "FinalMask " .. translate("Must be JSON text!")
-	end
 end
 
 --[[Fast Open]]
@@ -815,6 +813,9 @@ o:value("UseIPv6v4", translate("Prefer IPv6"))
 o:value("UseIPv4", translate("IPv4 Only"))
 o:value("UseIPv6", translate("IPv6 Only"))
 
+o = s:option(Flag, _n("happy_eyeballs"), translate("Enable Happy Eyeballs"), translate("Attempts IPv4 and IPv6 simultaneously; automatically uses the faster connection."))
+o.default = 0
+
 local protocols = s.fields[_n("protocol")].keylist
 if #protocols > 0 then
 	for i, v in ipairs(protocols) do
@@ -826,7 +827,11 @@ if #protocols > 0 then
 			s.fields[_n("address")]:depends(depends_condition)
 			s.fields[_n("port")]:depends(depends_condition)
 			s.fields[_n("domain_resolver")]:depends(depends_condition)
-			s.fields[_n("domain_strategy")]:depends(depends_condition)
+			s.fields[_n("happy_eyeballs")]:depends(depends_condition)
+
+			local strategy_depends = api.clone(depends_condition)
+			strategy_depends[_n("happy_eyeballs")] = false
+			s.fields[_n("domain_strategy")]:depends(strategy_depends)
 
 			if v ~= "hysteria2" then
 				s.fields[_n("tcp_fast_open")]:depends({ [_n("protocol")] = v })
@@ -850,7 +855,7 @@ if not load_shunt_options then
 
 	o1 = s:option(ListValue, _n("preproxy_node"), translate("Preproxy Node"), translate("Only support a layer of proxy."))
 	o1:depends({ [_n("chain_proxy")] = "1", [_n("hysteria2_realms")] = false })
-	o1.template = appname .. "/cbi/nodes_listvalue"
+	o1.template = m:template_path("/cbi/nodes_listvalue")
 	o1.group = {}
 
 	o3 = s:option(Value, _n("outbound_iface"), translate("Outbound Interface"))
@@ -862,7 +867,7 @@ if not load_shunt_options then
 
 	o2 = s:option(ListValue, _n("to_node"), translate("Landing Node"), translate("Only support a layer of proxy."))
 	o2:depends({ [_n("chain_proxy")] = "2", [_n("hysteria2_realms")] = false })
-	o2.template = appname .. "/cbi/nodes_listvalue"
+	o2.template = m:template_path("/cbi/nodes_listvalue")
 	o2.group = {}
 
 	for k1, v1 in pairs(node_list) do
@@ -885,7 +890,7 @@ end
 api.luci_types(arg[1], m, s, type_name, option_prefix)
 
 if load_shunt_options then
-	local current_node = m.uci:get_all(appname, arg[1]) or {}
+	local current_node = m:get(arg[1]) or {}
 	local shunt_lua = loadfile("/usr/lib/lua/luci/model/cbi/passwall/client/include/shunt_options.lua")
 	setfenv(shunt_lua, getfenv(1))(m, s, {
 		node_id = arg[1],
