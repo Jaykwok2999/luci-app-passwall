@@ -120,9 +120,6 @@ jobs:
 
           - container_tag: x86_64-24.10.5
             ver: "23.05-24.10"
-
-          - container_tag: x86-64-SNAPSHOT
-            ver: "25.12+"
     steps:
       - name: Checkout
         uses: actions/checkout@main
